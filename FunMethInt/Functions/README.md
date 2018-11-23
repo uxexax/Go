@@ -1,0 +1,1 @@
+**function.go** is just a sandbox of function usage.
