@@ -1,0 +1,1 @@
+A simple experiment with *sync.WaitGroup*.

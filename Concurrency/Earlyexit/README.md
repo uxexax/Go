@@ -1,0 +1,1 @@
+This simply program illustrates the effects of early exit.
