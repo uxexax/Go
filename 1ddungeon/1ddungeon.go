@@ -48,10 +48,10 @@ type Dungeon struct {
 }
 
 // NewDungeon instantiates a new dungeon.
-func NewDungeon() Dungeon {
-	var d Dungeon
-	d.Init(100)
-	return d
+func NewDungeon() *Dungeon {
+	dungeon := new(Dungeon)
+	dungeon.Init(100)
+	return dungeon
 }
 
 // Init initializes the dugeon.
