@@ -1,0 +1,1 @@
+This program finds a way out from a 1 dimensional dungeons full of obstacles. More description to be added later.
