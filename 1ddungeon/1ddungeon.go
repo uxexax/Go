@@ -1,11 +1,13 @@
 /* -----
 TODO:
  * put things into a package
- * create out put file
  * suppress console printout
  * create a few bigger dungeons
  * add description
  * src, bin etc. directories
+ * output file: if there's no way out, show the deepest the traveler can go
+ * short paths on console, long in output file
+ * output lookout cleanup
 ----- */
 
 package main
@@ -28,15 +30,54 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println(dungeon.chart)
-
 	dungeon.Travel(0, dungeon.FirstSteps(), 0)
 
-	if dungeon.TravelResult() == 0 {
-		dungeon.PrintPath()
+	PrintWayOut(dungeon)
+	SaveWayOut(dungeon)
+}
+
+func PrintWayOut(dungeon *Dungeon) {
+	theresWayOut := (dungeon.TravelResult() == 0)
+
+	if theresWayOut {
+		_, shortChart := dungeon.FancyChart()
+		_, shortWayOut := dungeon.FancyTravelPath()
+		fmt.Println()
+		fmt.Println("The way out:")
+		fmt.Println(shortChart)
+		fmt.Printf(shortWayOut)
+		fmt.Println()
 	} else {
+		fmt.Println()
 		fmt.Println("There's no way out!")
+		fmt.Println()
 	}
+}
+
+func SaveWayOut(dungeon *Dungeon) {
+	theresWayOut := (dungeon.TravelResult() == 0)
+
+	longChart, _ := dungeon.FancyChart()
+	longWayOut, _ := dungeon.FancyTravelPath()
+
+	fileName := strings.Split(dungeon.GetSource(), ".")[0]
+	fileName += ".wayout"
+	fileHandle, _ := os.Create(fileName)
+	fileWriter := bufio.NewWriter(fileHandle)
+
+	fileWriter.WriteString(fmt.Sprintln(longChart))
+	fileWriter.WriteString(fmt.Sprintln(longWayOut))
+
+	if theresWayOut {
+		fileWriter.WriteString(fmt.Sprintln(longWayOut))
+	} else {
+		fileWriter.WriteString(fmt.Sprintln("There's no way out!"))
+	}
+
+	fileWriter.Flush()
+	fileHandle.Close()
+
+	fmt.Println("Way out saved in", fileName)
 }
 
 // Dungeon is the aggregator object for the map and the travel path.
@@ -73,6 +114,10 @@ func (dungeon *Dungeon) StoreSource(source string) {
 	dungeon.source = source
 }
 
+func (dungeon *Dungeon) GetSource() string {
+	return dungeon.source
+}
+
 // FirstSteps returns the number of maximum possible steps indicated in the first place
 // of the dungeon.
 func (dungeon *Dungeon) FirstSteps() int {
@@ -86,9 +131,47 @@ func (dungeon *Dungeon) TravelResult() int {
 	return dungeon.travelRes
 }
 
-// TravelPath returns the way out of the dungeon.
-func (dungeon *Dungeon) TravelPath() []int {
-	return dungeon.travelPath
+func (dungeon *Dungeon) FancyChart() (string, string) {
+	separatorMark := " "
+
+	fancyChart := ""
+	shortFancyChart := ""
+	for _, chartValue := range dungeon.chart {
+		fancyChart += strconv.Itoa(chartValue) + separatorMark
+	}
+	fancyChart = fancyChart[:len(fancyChart)-1]
+
+	shortFancyChart = fancyChart // TODO
+
+	return fancyChart, shortFancyChart
+}
+
+func (dungeon *Dungeon) FancyTravelPath() (string, string) {
+	// inAndOutMark := "==>"
+	transitMark := "="
+	stopMark := "O"
+	separatorMark := " "
+	travelPathIndex := 0
+
+	fancyPath := ""
+	fancyShortPath := ""
+	for chartIndex, chartValue := range dungeon.chart {
+		markSize := len(strconv.Itoa(chartValue))
+		mark := transitMark
+		if chartIndex == dungeon.travelPath[travelPathIndex] {
+			mark = stopMark
+			travelPathIndex++
+		}
+
+		for m := 0; m < markSize; m++ {
+			fancyPath += mark
+		}
+		fancyPath += separatorMark
+	}
+
+	fancyShortPath = fancyPath // TODO
+
+	return fancyPath, fancyShortPath
 }
 
 // Travel recursively advances on the dungeon map. It tries the new position indicated in the
@@ -123,20 +206,8 @@ func (dungeon *Dungeon) Travel(currentPos, stepsToTake, level int) {
 	return
 }
 
-// PrintPath prints the path to the exit to the standard output. Elements of the path are
-// the indices of the related points of the dungeon map.
-func (dungeon *Dungeon) PrintPath() {
-	travelPathStr := make([]string, len(dungeon.travelPath))
-	for i, v := range dungeon.travelPath {
-		travelPathStr[i] = strconv.Itoa(v)
-	}
-
-	fmt.Printf("%s, out", strings.Join(travelPathStr, ", "))
-	fmt.Println()
-}
-
-// ObtainMap takes dungeon map points one by one and one per line from the standard
-// input. Empty line indicates end of input.
+// ObtainMap takes dungeon map points either from a given file, or from the
+// standard input. The map should be a single line of space separated integers.
 func (dungeon *Dungeon) ObtainMap() error {
 	consoleLoop := func() (string, error) {
 		promptReader := bufio.NewScanner(os.Stdin)
@@ -157,6 +228,7 @@ func (dungeon *Dungeon) ObtainMap() error {
 		return userError
 	}
 	fileName := userInput
+	source := fileName
 
 	rawMap := ""
 	if strings.ToLower(fileName) == "#manual" {
@@ -178,12 +250,15 @@ func (dungeon *Dungeon) ObtainMap() error {
 		for fileReader.Scan() {
 			rawMap += " " + fileReader.Text()
 		}
-		fmt.Println(rawMap)
+
+		fileHandle.Close()
 
 		if fileReader.Err() != nil {
 			return fileReader.Err()
 		}
 	}
+
+	dungeon.StoreSource(source)
 
 	return dungeon.parseMap(rawMap)
 }
