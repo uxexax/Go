@@ -155,7 +155,7 @@ func (host *DinnerHost) Listen() {
 // AllowEating checks if the philosopher is allowed to have dinner. Criteria:
 // * No more than _maxParallel_ philosophers can eat in parallel.
 // * The philosopher is not already eating, do not exceed the number of allowed dinners and
-//   there's enough time elapsed since the previous dinner.
+//   there's enough time elapsed since the philosopher's last dinner.
 // * Both chopsticks corresponding to the philosopher's seat are free.
 // The function also takes care of chopstick reservation. Note: when only either of the
 // chopsticks is free, it is reserved in spite the philosopher cannot start eating.

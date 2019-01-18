@@ -4,7 +4,7 @@ eating is controlled by a host. A philosopher is allowed to eat when the followi
 criteria are fulfilled:
 // * The maximum number of parallelly eating philosophers has not yet been reached.
 // * The philosopher is not already eating, do not exceed the number of allowed dinners and
-//   there's enough time elapsed since the previous dinner.
+//   there's enough time elapsed since the philosophers last dinner.
 // * Both chopsticks corresponding to the philosopher's seat are free.
 // Note: seats are randomized.
 ----- */
