@@ -1,9 +1,9 @@
 package main
 
 import (
-	"data"
+	data "_Classroom/FunMethInt/Classes/data"
+	objectdata "_Classroom/FunMethInt/Classes/objectdata"
 	"fmt"
-	"objectdata"
 )
 
 type RegModel struct {
