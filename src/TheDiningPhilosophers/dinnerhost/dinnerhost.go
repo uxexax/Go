@@ -1,58 +1,18 @@
-/* -----
-This is an alternative implementation of the dining philosophers problem, where
-eating is controlled by a host. A philosopher is allowed to eat when the following
-criteria are fulfilled:
-// * The maximum number of parallelly eating philosophers has not yet been reached.
-// * The philosopher is not already eating, do not exceed the number of allowed dinners and
-//   there's enough time elapsed since the previous dinner.
-// * Both chopsticks corresponding to the philosopher's seat are free.
-// Note: seats are randomized.
------ */
-
-package main
+package dinnerhost
 
 import (
+	philosopher "DiningPhilosophers/philosopher"
 	"fmt"
 	"math/rand"
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
-func main() {
-	var waitGrp sync.WaitGroup
-
-	names := []string{"John", "Robert", "Lilla", "Charles", "Stella"}
-	tableCount := len(names)
-
-	host := NewDinnerHostPtr(tableCount, 2, 3)
-	requestChannel, finishChannel := host.AskChannels()
-	go host.Listen()
-
-	for _, name := range names {
-		phi := NewPhilosopherPtr(name)
-		accepted := host.Add(*phi)
-		if accepted {
-			waitGrp.Add(1)
-			go phi.GoToDinner(&waitGrp, requestChannel, finishChannel)
-		}
-	}
-
-	waitGrp.Wait()
-
-	fmt.Println("===== EVERYBODY LEFT THE TABLE. =====")
-	fmt.Println()
-}
-
-/* ---
-========== THE HOST OF THE DINNER ==============================================
---- */
-
 // DinnerHost is the main data structure for the host of the dinner.
 type DinnerHost struct {
-	phiData         map[string]*PhilosopherData
+	phiData         map[string]*philosopherData
 	requestChannel  chan string
 	finishChannel   chan string
 	maxParallel     int
@@ -63,8 +23,8 @@ type DinnerHost struct {
 	freeSeats       []int
 }
 
-// PhilosopherData contains philosopher specific data. It is used within DinnerHost.
-type PhilosopherData struct {
+// philosopherData contains philosopher specific data. It is used within DinnerHost.
+type philosopherData struct {
 	respChannel    chan string
 	eating         bool
 	dinnersSpent   int
@@ -83,7 +43,7 @@ func NewDinnerHostPtr(tableCount, maxParallel, maxDinner int) *DinnerHost {
 
 // Init is used to initialize the DinnerHost. Note: seats are randomized.
 func (host *DinnerHost) Init(tableCount, maxParallel, maxDinner int) {
-	host.phiData = make(map[string]*PhilosopherData)
+	host.phiData = make(map[string]*philosopherData)
 	host.requestChannel = make(chan string)
 	host.finishChannel = make(chan string)
 	host.maxParallel = maxParallel
@@ -101,15 +61,15 @@ func (host *DinnerHost) Init(tableCount, maxParallel, maxDinner int) {
 	host.freeSeats = rand.Perm(tableCount)
 }
 
-// NewPhilosopherDataPtr creates and initializes a PhilosopherData object and returns a pointer to it.
-func NewPhilosopherDataPtr(respChannel chan string) *PhilosopherData {
-	pd := new(PhilosopherData)
+// newPhilosopherDataPtr creates and initializes a philosopherData object and returns a pointer to it.
+func newPhilosopherDataPtr(respChannel chan string) *philosopherData {
+	pd := new(philosopherData)
 	pd.Init(respChannel)
 	return pd
 }
 
-// Init is used to initialize the PhilosopherData.
-func (pd *PhilosopherData) Init(respChannel chan string) {
+// Init is used to initialize the philosopherData.
+func (pd *philosopherData) Init(respChannel chan string) {
 	pd.respChannel = respChannel
 	pd.eating = false
 	pd.dinnersSpent = 0
@@ -128,7 +88,7 @@ func (host *DinnerHost) AskChannels() (chan string, chan string) {
 
 // Add registers the philosopher at the host. It first checks if they can join (table full, already at
 // the table), then creates a new philosopher data record and assigns a seat to the philosopher.
-func (host *DinnerHost) Add(newPhilosopher Philosopher) bool {
+func (host *DinnerHost) Add(newPhilosopher philosopher.Philosopher) bool {
 	newName := newPhilosopher.Name()
 	fmt.Println(newName + " WANTS TO JOIN THE TABLE.")
 	if len(host.phiData) >= host.tableCount {
@@ -141,7 +101,7 @@ func (host *DinnerHost) Add(newPhilosopher Philosopher) bool {
 		fmt.Println()
 		return false
 	}
-	host.phiData[newName] = NewPhilosopherDataPtr(newPhilosopher.RespChannel())
+	host.phiData[newName] = newPhilosopherDataPtr(newPhilosopher.RespChannel())
 	host.phiData[newName].TakeSeat(host.freeSeats[0])
 	host.freeSeats = host.freeSeats[1:]
 	fmt.Println(newName + " JOINED THE TABLE.")
@@ -292,10 +252,10 @@ func (host *DinnerHost) PrintReport(additionalInfo bool) {
 	fmt.Println()
 }
 
-// ===== PhilosopherData methods
+// ===== philosopherData methods
 
 // CanEat checks if the philosopher specific criteria of eating is fulfilled.
-func (pd *PhilosopherData) CanEat(maxDinner int) string {
+func (pd *philosopherData) CanEat(maxDinner int) string {
 	switch {
 	case pd.eating:
 		return "E:EATING"
@@ -308,13 +268,13 @@ func (pd *PhilosopherData) CanEat(maxDinner int) string {
 }
 
 // StartedEating updates philosopher specific data when the philosopher starts eating.
-func (pd *PhilosopherData) StartedEating() {
+func (pd *philosopherData) StartedEating() {
 	pd.eating = true
 	pd.dinnersSpent++
 }
 
 // FinishedEating updates philosopher specific data when the philosopher finished eating.
-func (pd *PhilosopherData) FinishedEating() {
+func (pd *philosopherData) FinishedEating() {
 	pd.eating = false
 	pd.leftChopstick = -1
 	pd.rightChopstick = -1
@@ -322,100 +282,43 @@ func (pd *PhilosopherData) FinishedEating() {
 }
 
 // RespChannel returns the philosopher's response channel.
-func (pd *PhilosopherData) RespChannel() chan string {
+func (pd *philosopherData) RespChannel() chan string {
 	return pd.respChannel
 }
 
 // LeftChopstick returns the ID of the philosopher's currently reserved left chopstick.
 // If no left chopstick is reserved, then -1 is returned.
-func (pd *PhilosopherData) LeftChopstick() int {
+func (pd *philosopherData) LeftChopstick() int {
 	return pd.leftChopstick
 }
 
 // RightChopstick returns the ID of the philosopher's currently reserved right chopstick.
 // If no right chopstick is reserved, then -1 is returned.
-func (pd *PhilosopherData) RightChopstick() int {
+func (pd *philosopherData) RightChopstick() int {
 	return pd.rightChopstick
 }
 
 // HasBothChopsticks returns true if both of the chopstics are reserved for the philosopher.
-func (pd *PhilosopherData) HasBothChopsticks() bool {
+func (pd *philosopherData) HasBothChopsticks() bool {
 	return (pd.leftChopstick >= 0) && (pd.rightChopstick >= 0)
 }
 
 // SetLeftChop can be used to set the left chopstick ID for the philosopher.
-func (pd *PhilosopherData) SetLeftChop(leftChop int) {
+func (pd *philosopherData) SetLeftChop(leftChop int) {
 	pd.leftChopstick = leftChop
 }
 
 // SetRightChop can be used to set the right chopstick ID for the philosopher.
-func (pd *PhilosopherData) SetRightChop(rightChop int) {
+func (pd *philosopherData) SetRightChop(rightChop int) {
 	pd.rightChopstick = rightChop
 }
 
 // TakeSeat can be used to set the seat number for the philosopher.
-func (pd *PhilosopherData) TakeSeat(seatNumber int) {
+func (pd *philosopherData) TakeSeat(seatNumber int) {
 	pd.seat = seatNumber
 }
 
 // Seat returns the seat number of the philosopher.
-func (pd *PhilosopherData) Seat() int {
+func (pd *philosopherData) Seat() int {
 	return pd.seat
-}
-
-/* ---
-========== THE PHILOSOPHER =====================================================
---- */
-
-// Philosopher represents an individual philosopher.
-type Philosopher struct {
-	name        string
-	respChannel chan string
-}
-
-// NewPhilosopherPtr creates and initializes a Philosopher object and returns a pointer to it.
-func NewPhilosopherPtr(name string) *Philosopher {
-	phi := new(Philosopher)
-	phi.Init(name)
-	return phi
-}
-
-// Init can be used to initialize a Philosopher.
-func (phi *Philosopher) Init(name string) {
-	phi.name = name
-	phi.respChannel = make(chan string)
-}
-
-// Name returns the name of the philosopher.
-func (phi *Philosopher) Name() string {
-	return phi.name
-}
-
-// RespChannel returns the philosopher's dedicated response channel.
-func (phi *Philosopher) RespChannel() chan string {
-	return phi.respChannel
-}
-
-// GoToDinner is the philosopher's main task. They periodically issue eat requests to the host, unless
-// not already eating. When asked so by the host, the philosopher leaves.
-func (phi *Philosopher) GoToDinner(waitGrp *sync.WaitGroup, requestChannel, finishChannel chan string) {
-	defer waitGrp.Done()
-
-	retryInterval := time.Duration(2000) * time.Millisecond
-	eatingDuration := time.Duration(5000) * time.Millisecond
-
-	for {
-		requestChannel <- phi.name
-		switch <-phi.respChannel {
-		case "OK":
-			time.Sleep(eatingDuration)
-			finishChannel <- phi.name
-		case "E:LIMIT":
-			fmt.Println(strings.ToUpper("----- " + phi.name + " LEFT THE TABLE. -----"))
-			fmt.Println()
-			return
-		default:
-			time.Sleep(retryInterval)
-		}
-	}
 }
