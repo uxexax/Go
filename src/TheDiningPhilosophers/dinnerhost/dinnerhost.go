@@ -1,7 +1,7 @@
 package dinnerhost
 
 import (
-	philosopher "DiningPhilosophers/philosopher"
+	philosopher "TheDiningPhilosophers/philosopher"
 	"fmt"
 	"math/rand"
 	"sort"

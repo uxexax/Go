@@ -12,8 +12,8 @@ criteria are fulfilled:
 package main
 
 import (
-	dinnerhost "DiningPhilosophers/dinnerhost"
-	philosopher "DiningPhilosophers/philosopher"
+	dinnerhost "TheDiningPhilosophers/dinnerhost"
+	philosopher "TheDiningPhilosophers/philosopher"
 	"fmt"
 	"sync"
 	"time"
@@ -45,7 +45,3 @@ func main() {
 
 	time.Sleep(time.Duration(2) * time.Second)
 }
-
-/* ---
-========== THE PHILOSOPHER =====================================================
---- */
