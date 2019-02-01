@@ -43,5 +43,7 @@ func main() {
 	fmt.Println("===== EVERYBODY LEFT THE TABLE. =====")
 	fmt.Println()
 
+	// Final sleep to avoid immediate end of program, so that the final
+	// message is visible to also for those who do not use cmd terminal.
 	time.Sleep(time.Duration(2) * time.Second)
 }
